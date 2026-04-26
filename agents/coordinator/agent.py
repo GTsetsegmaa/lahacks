@@ -57,6 +57,9 @@ from shared.contracts import AgentDecision
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
+# Guard against mailbox re-delivery while a slow Ollama cascade is in-flight
+_processing: set[str] = set()
+
 coordinator = Agent(
     name="supplymind_coordinator",
     seed="coordinator_seed_supplymind_2024",
@@ -176,18 +179,7 @@ async def on_startup(ctx: Context) -> None:
 # Chat Protocol — entry point from ASI:One
 # ---------------------------------------------------------------------------
 
-@chat_proto.on_message(ChatMessage)
-async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> None:
-    await ctx.send(sender, ChatAcknowledgement(
-        timestamp=datetime.now(timezone.utc),
-        acknowledged_msg_id=msg.msg_id,
-    ))
-
-    text_parts = [c.text for c in msg.content if isinstance(c, TextContent)]
-    user_text = " ".join(text_parts).strip() or "(no text)"
-    ctx.logger.info("Chat from %s: %s", sender, user_text[:120])
-
-    # Run the full cascade inline — no dependency on other agents being alive
+async def _cascade_and_reply(ctx: Context, sender: str, msg_key: str, user_text: str) -> None:
     try:
         reply_text = await _run_cascade(ctx)
     except Exception as exc:
@@ -196,6 +188,8 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
             "no_results_reply",
             "I was unable to complete the supply chain analysis. Please try again.",
         )
+    finally:
+        _processing.discard(msg_key)
 
     await ctx.send(sender, ChatMessage(
         timestamp=datetime.now(timezone.utc),
@@ -203,6 +197,30 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
         content=[TextContent(type="text", text=reply_text)],
     ))
     ctx.logger.info("Reply sent to %s", sender)
+
+
+@chat_proto.on_message(ChatMessage)
+async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> None:
+    # Ack immediately — this marks the message as processed in the mailbox
+    # so re-polls don't re-deliver it while the slow Ollama cascade runs.
+    await ctx.send(sender, ChatAcknowledgement(
+        timestamp=datetime.now(timezone.utc),
+        acknowledged_msg_id=msg.msg_id,
+    ))
+
+    msg_key = str(msg.msg_id)
+    if msg_key in _processing:
+        ctx.logger.info("Duplicate delivery of %s — skipping", msg_key)
+        return
+    _processing.add(msg_key)
+
+    text_parts = [c.text for c in msg.content if isinstance(c, TextContent)]
+    user_text = " ".join(text_parts).strip() or "(no text)"
+    ctx.logger.info("Chat from %s: %s", sender, user_text[:120])
+
+    # Fire cascade in the background so this handler returns immediately.
+    # uAgents will not re-deliver the message because the ack was already sent.
+    asyncio.create_task(_cascade_and_reply(ctx, sender, msg_key, user_text))
 
 
 @chat_proto.on_message(ChatAcknowledgement)

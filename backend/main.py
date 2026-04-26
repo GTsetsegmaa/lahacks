@@ -39,6 +39,11 @@ async def post_decision(decision: AgentDecision) -> dict:
     return {"status": "accepted", "total": len(_decisions)}
 
 
+@app.get("/api/health")
+async def health() -> dict:
+    return {"status": "ok"}
+
+
 @app.get("/api/decisions")
 async def get_decisions() -> list[AgentDecision]:
     return _decisions
@@ -162,6 +167,140 @@ async def trigger_cascade() -> dict:
         "total_savings_usd": savings,
         "summary": synthesis.summary,
     }
+
+
+# ---------------------------------------------------------------------------
+# Demo Mode trigger — seeded reasoning, 3 s pacing between agents
+# ---------------------------------------------------------------------------
+
+_DEMO_DECISIONS = [
+    {
+        "agent_name": "market_intelligence",
+        "decision_type": "market_signal",
+        "summary": "18% fuel surcharge spike on Gulf Coast-Midwest truck lane. Week 47 seasonal index at 2.40 — annual peak.",
+        "reasoning": (
+            "External price indices show an 18% fuel surcharge spike on the Gulf Coast-Midwest "
+            "truck corridor effective this week, driven by refinery constraints in Houston. "
+            "Two active Thanksgiving promotional campaigns are amplifying inbound freight demand. "
+            "The seasonal index for Week 47 sits at 2.40 — the highest of the year for Diamond Foods SKUs."
+        ),
+        "confidence": 0.94,
+        "inputs_considered": ["external_signals.json (fuel_surcharge_spike, weather_clear)", "seasonal_index.json (week 47: 2.40)", "promo_calendar.json (2 active promos)"],
+        "outputs": {"active_signals": [{"signal_type": "fuel_surcharge_spike", "affected_lane": "Gulf Coast-Midwest", "magnitude": 0.18, "description": "Fuel surcharge +18% on Gulf Coast truck lane"}], "has_fuel_spike": True, "affected_lanes": ["Gulf Coast-Midwest"]},
+        "downstream_targets": ["demand_planning"],
+    },
+    {
+        "agent_name": "demand_planning",
+        "decision_type": "demand_forecast",
+        "summary": "SKU-4471 demand spike detected at 340% of baseline (3.4x normal). 7-day forecast generated for 12 SKUs.",
+        "reasoning": (
+            "SKU-4471 (Diamond Foods Holiday Mixed Nuts, 16oz) has crossed the 300% spike threshold: "
+            "the recent 7-day average is 510 units/day against a 90-day baseline of 150 units/day — "
+            "a 340% lift. The Thanksgiving promo overlay adds a further 120% demand lift, yielding a "
+            "7-day forecast of 3,570 units. Immediate replenishment action is required to avoid "
+            "stockout by day 3."
+        ),
+        "confidence": 0.87,
+        "inputs_considered": ["historical_shipments.json (90 days)", "seasonal_index.json (week 47 index: 2.40)", "promo_calendar.json (SKU-4471 Thanksgiving promo, +120%)"],
+        "outputs": {
+            "forecasts": [
+                {"sku_id": "SKU-4471", "forecast_period_days": 7, "units_per_day": [504.0, 514.1, 524.2, 534.3, 544.4, 554.5, 564.6], "total_units": 3739.1, "spike_detected": True, "spike_magnitude_pct": 340.0, "confidence": 0.87, "seasonal_index_applied": True, "promo_overlay_applied": True},
+                {"sku_id": "SKU-2103", "forecast_period_days": 7, "units_per_day": [28.0, 28.6, 29.1, 29.7, 30.2, 30.8, 31.3], "total_units": 207.7, "spike_detected": False, "spike_magnitude_pct": None, "confidence": 0.72, "seasonal_index_applied": True, "promo_overlay_applied": False},
+                {"sku_id": "SKU-3892", "forecast_period_days": 7, "units_per_day": [36.0, 36.7, 37.4, 38.1, 38.9, 39.6, 40.3], "total_units": 267.0, "spike_detected": False, "spike_magnitude_pct": None, "confidence": 0.72, "seasonal_index_applied": True, "promo_overlay_applied": False},
+            ]
+        },
+        "downstream_targets": ["inventory_manager"],
+    },
+    {
+        "agent_name": "inventory_manager",
+        "decision_type": "inventory_flag",
+        "summary": "3 SKU(s) at stockout risk, 1 SKU(s) with excess inventory. Immediate replenishment required for SKU-2103, SKU-3892, SKU-4471.",
+        "reasoning": (
+            "Three SKUs are at acute stockout risk: SKU-4471 has 2.1 days of supply at current "
+            "spike demand, SKU-2103 has 3.4 days, and SKU-3892 has 4.8 days. Combined, these "
+            "require an emergency inbound of approximately 5,200 units within 48 hours to restore "
+            "a 7-day cover position. One SKU (SKU-1099, Sunflower Seeds) is in excess by 1,600 "
+            "units — reducing inbound will free warehouse capacity for the emergency replenishment."
+        ),
+        "confidence": 0.92,
+        "inputs_considered": ["inventory.json (12 lots)", "demand_planning decision (3 SKU forecasts)"],
+        "outputs": {
+            "flags": [
+                {"sku_id": "SKU-4471", "warehouse_id": "Warehouse-7", "flag_type": "at_risk", "current_stock": 1071, "forecast_demand": 3739.1, "days_of_supply": 2.1, "recommended_action": "Replenish SKU-4471: order 6407 units immediately", "urgency": "high"},
+                {"sku_id": "SKU-2103", "warehouse_id": "Warehouse-7", "flag_type": "at_risk", "current_stock": 237, "forecast_demand": 207.7, "days_of_supply": 3.4, "recommended_action": "Replenish SKU-2103: order 178 units immediately", "urgency": "high"},
+                {"sku_id": "SKU-3892", "warehouse_id": "Warehouse-7", "flag_type": "at_risk", "current_stock": 314, "forecast_demand": 267.0, "days_of_supply": 4.8, "recommended_action": "Replenish SKU-3892: order 220 units immediately", "urgency": "medium"},
+                {"sku_id": "SKU-1099", "warehouse_id": "WH-3", "flag_type": "excess", "current_stock": 2225, "forecast_demand": 207.0, "days_of_supply": 75.2, "recommended_action": "Reduce inbound for SKU-1099: 1825 units above 14-day cover", "urgency": "low"},
+            ],
+            "at_risk_count": 3,
+            "excess_count": 1,
+            "at_risk_skus": ["SKU-4471", "SKU-2103", "SKU-3892"],
+            "excess_skus": ["SKU-1099"],
+        },
+        "downstream_targets": ["shipment_analyst"],
+    },
+    {
+        "agent_name": "shipment_analyst",
+        "decision_type": "freight_recommendation",
+        "summary": "Rerouted 2 Gulf Coast shipment(s) to intermodal, saving $3,421. 3 at-risk SKU(s) flagged for expedite.",
+        "reasoning": (
+            "Two open purchase orders bound for the same Gulf Coast DC are currently routed via "
+            "truck at $3,540 per shipment. Switching both to intermodal via FR-002 at $1,830 "
+            "per shipment saves $3,421 in total freight cost with only a 2-day transit extension "
+            "— well within the available lead time window. This single consolidation move covers "
+            "12% of the emergency replenishment order cost."
+        ),
+        "confidence": 0.91,
+        "inputs_considered": ["freight_rates.json (9 lanes)", "market_signals (1 active, fuel spike=yes)", "inventory_flags (3 at-risk SKUs)"],
+        "outputs": {
+            "recommendations": [
+                {"original_lane": "Gulf Coast-Midwest", "original_mode": "truck", "original_cost_usd": 3540.0, "recommended_lane": "Gulf Coast-Midwest", "recommended_mode": "intermodal", "recommended_cost_usd": 1829.56, "savings_usd": 1710.44, "reason": "Fuel surcharge spike (+18%) on Gulf Coast truck lane. Intermodal saves $1,710.44/shipment at +2 days transit.", "affected_shipment_ids": ["SHIP-1001"]},
+                {"original_lane": "Gulf Coast-Midwest", "original_mode": "truck", "original_cost_usd": 3540.0, "recommended_lane": "Gulf Coast-Midwest", "recommended_mode": "intermodal", "recommended_cost_usd": 1829.56, "savings_usd": 1710.44, "reason": "Fuel surcharge spike (+18%) on Gulf Coast truck lane. Intermodal saves $1,710.44/shipment at +2 days transit.", "affected_shipment_ids": ["SHIP-1002"]},
+            ],
+            "total_savings_usd": 3420.88,
+            "rerouted_count": 2,
+            "has_fuel_spike": True,
+        },
+        "downstream_targets": ["coordinator"],
+    },
+    {
+        "agent_name": "coordinator",
+        "decision_type": "synthesis",
+        "summary": "Full cascade complete: 340% demand spike on SKU-4471, 3 at-risk SKUs, $3,421 freight savings.",
+        "reasoning": (
+            "SupplyMind has completed its full 5-agent analysis for Diamond Foods Week 47. "
+            "The headline: a 340% demand spike on SKU-4471 (Holiday Mixed Nuts) requires "
+            "emergency replenishment within 48 hours, while a freight consolidation move saves "
+            "$3,421 — all computed locally on the GX10 with no external API calls. "
+            "Three at-risk SKUs are flagged and purchase orders have been pre-staged in the "
+            "Replenishment Plan."
+        ),
+        "confidence": 0.93,
+        "inputs_considered": ["market_intelligence decision", "demand_planning decision", "inventory_manager decision", "shipment_analyst decision"],
+        "outputs": {"cascade_complete": True, "at_risk_count": 3, "excess_count": 1, "total_savings_usd": 3420.88, "rerouted_count": 2},
+        "downstream_targets": [],
+    },
+]
+
+
+@app.post("/api/trigger/demo", status_code=202)
+async def trigger_demo() -> dict:
+    """Demo mode: broadcast seeded decisions with 3-second pacing between agents."""
+    import datetime as _dt
+
+    await asyncio.sleep(1)  # brief dramatic pause before first agent fires
+
+    for raw in _DEMO_DECISIONS:
+        from shared.contracts import AgentDecision
+
+        decision = AgentDecision(
+            **raw,
+            timestamp=_dt.datetime.now(_dt.timezone.utc),
+        )
+        _decisions.append(decision)
+        await _broadcast(decision.model_dump_json())
+        await asyncio.sleep(3)
+
+    return {"status": "demo_complete", "decisions": len(_DEMO_DECISIONS)}
 
 
 # ---------------------------------------------------------------------------

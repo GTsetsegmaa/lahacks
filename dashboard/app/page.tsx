@@ -18,6 +18,7 @@ import {
 import Link from "next/link";
 import type { AgentDecision } from "@shared/contracts";
 import { cn } from "@/lib/utils";
+import { SavingsCounter } from "@/components/SavingsCounter";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -88,13 +89,15 @@ function KpiCard({
   icon: Icon,
   label,
   value,
+  savings,
   sub,
   accent,
   href,
 }: {
   icon: React.ElementType;
   label: string;
-  value: string;
+  value: string | null;
+  savings?: number;
   sub?: string;
   accent: string;
   href?: string;
@@ -108,7 +111,14 @@ function KpiCard({
         <Icon size={14} className={accent} />
         <span className="text-xs text-gray-500">{label}</span>
       </div>
-      <p className={cn("text-2xl font-semibold tabular-nums", accent)}>{value}</p>
+      {savings !== undefined ? (
+        <SavingsCounter
+          target={savings}
+          className={cn("text-2xl font-semibold tabular-nums", accent)}
+        />
+      ) : (
+        <p className={cn("text-2xl font-semibold tabular-nums", accent)}>{value}</p>
+      )}
       {sub && <p className="mt-0.5 text-xs text-gray-600">{sub}</p>}
     </div>
   );
@@ -248,7 +258,7 @@ export default function OverviewPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8 flex items-start justify-between">
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Overview</h1>
           <p className="mt-0.5 text-sm text-gray-500">
@@ -259,7 +269,7 @@ export default function OverviewPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={fetchAll}
             disabled={loading}
@@ -349,7 +359,8 @@ export default function OverviewPage() {
           <KpiCard
             icon={DollarSign}
             label="Freight Savings"
-            value={kpis.freightSavings > 0 ? `$${kpis.freightSavings.toLocaleString()}` : "$0"}
+            value={null}
+            savings={kpis.freightSavings}
             sub="Gulf Coast consolidation"
             accent={kpis.freightSavings > 0 ? "text-emerald-400" : "text-gray-400"}
             href="/activity"

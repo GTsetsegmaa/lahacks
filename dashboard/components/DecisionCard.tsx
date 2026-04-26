@@ -70,9 +70,11 @@ function agentLabel(name: string): string {
 }
 
 function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], {
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-  });
+  const diffS = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (diffS < 5)  return "just now";
+  if (diffS < 60) return `${diffS}s ago`;
+  if (diffS < 3600) return `${Math.floor(diffS / 60)}m ago`;
+  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function ConfidenceBadge({ value }: { value: number }) {

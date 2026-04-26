@@ -120,18 +120,40 @@ def run_demand_planning() -> AgentDecision:
     )
     reasoning = generate_reasoning(prompt)
 
+    spikes = [f["sku_id"] for f in forecasts if f["spike_detected"]]
+
     return AgentDecision(
         agent_name="demand_planning",
         decision_type="demand_forecast",
         summary=summary,
         reasoning=reasoning,
-        confidence=0.87,
+        confidence=0.85,
         inputs_considered=[
             "historical_shipments.json (90 days)",
             "seasonal_index.json (week 47 index: 2.40)",
             "promo_calendar.json (SKU-4471 Thanksgiving promo, +120%)",
         ],
-        outputs={"forecasts": forecasts},
+        outputs={"forecasts": forecasts, "spikes": spikes},
         timestamp=datetime.now(timezone.utc),
         downstream_targets=["inventory_manager"],
     )
+
+
+if __name__ == "__main__":
+    import json
+
+    decision = run_demand_planning()
+    print(decision.summary)
+    print()
+    print("reasoning:", decision.reasoning)
+    print("confidence:", decision.confidence)
+    print("spikes:", decision.outputs["spikes"])
+    print()
+    forecasts = decision.outputs["forecasts"]
+    print(f"{len(forecasts)} SKU forecasts generated.")
+    for f in forecasts:
+        if f["spike_detected"]:
+            print(
+                f"  SPIKE {f['sku_id']}: {f['spike_magnitude_pct']:.0f}% of baseline"
+                f" — 7-day total {f['total_units']:.0f} units"
+            )

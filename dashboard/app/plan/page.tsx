@@ -282,8 +282,8 @@ export default function PlanPage() {
                 </span>
               </h2>
 
-              <div className="overflow-hidden rounded-xl border border-gray-800">
-                <table className="w-full text-sm">
+              <div className="overflow-x-auto rounded-xl border border-gray-800">
+                <table className="min-w-[720px] w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-800 bg-gray-900/80">
                       <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">SKU / PO#</th>
