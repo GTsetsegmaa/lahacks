@@ -9,7 +9,9 @@ services:
     environment:
       - MONGO_URI=${MONGO_URI:-}
       - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
-      - LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:11434}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.asi1.ai/v1}
+      - LLM_MODEL=${LLM_MODEL:-asi1-mini}
     volumes:
       - ./shared:/app/shared:ro
     restart: unless-stopped
@@ -31,8 +33,9 @@ services:
       context: .
       dockerfile: agents/Dockerfile
     environment:
-      - LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:11434}
-      - LLM_MODEL=${LLM_MODEL:-gemma3}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.asi1.ai/v1}
+      - LLM_MODEL=${LLM_MODEL:-asi1-mini}
       - BACKEND_URL=http://backend:8000
       - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
     volumes:

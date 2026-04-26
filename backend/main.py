@@ -162,3 +162,124 @@ async def trigger_cascade() -> dict:
         "total_savings_usd": savings,
         "summary": synthesis.summary,
     }
+
+
+# ---------------------------------------------------------------------------
+# Replenishment Plan — structured purchase orders derived from inventory flags
+# ---------------------------------------------------------------------------
+
+_UNIT_COST_BY_CATEGORY: dict[str, float] = {
+    "nuts": 12.50,
+    "seeds": 8.75,
+    "dried fruit": 9.25,
+}
+_DEFAULT_UNIT_COST = 10.00
+
+_ETA_BY_URGENCY: dict[str, int] = {
+    "high": 2,
+    "medium": 5,
+    "low": 10,
+}
+
+_VENDOR_NAMES: dict[str, str] = {
+    "V-101": "Pacific Grove Supply Co.",
+    "V-142": "Sunbelt Commodities",
+    "V-203": "Central Valley Growers",
+    "V-317": "Cascade Ag Partners",
+    "V-408": "Heartland Nut Co.",
+    "V-512": "Western Premium Foods",
+}
+
+
+@app.get("/api/replenishment-plan")
+async def get_replenishment_plan() -> dict:
+    """Compute purchase orders from current inventory and demand forecast."""
+    import json
+    import uuid
+    from pathlib import Path
+
+    from agents.demand_planning.logic import run_demand_planning
+    from agents.inventory_manager.logic import run_inventory_assessment
+
+    data_dir = Path(__file__).resolve().parent.parent / "shared" / "mock_data"
+
+    skus_raw = json.loads((data_dir / "skus.json").read_text())
+    sku_map = {s["sku_id"]: s for s in skus_raw}
+
+    prod_raw = json.loads((data_dir / "production.json").read_text())
+    sku_vendor: dict[str, str] = {}
+    for rec in prod_raw:
+        sku_vendor.setdefault(rec["sku_id"], rec["vendor_id"])
+
+    demand_decision = run_demand_planning()
+    inventory_decision = run_inventory_assessment(demand_decision.model_dump())
+
+    flags: list[dict] = inventory_decision.outputs.get("flags", [])
+
+    orders: list[dict] = []
+    for flag in flags:
+        if flag["flag_type"] == "ok":
+            continue
+
+        sku_id = flag["sku_id"]
+        sku = sku_map.get(sku_id, {})
+        category = sku.get("category", "")
+        unit_cost = _UNIT_COST_BY_CATEGORY.get(category, _DEFAULT_UNIT_COST)
+        vendor_id = sku_vendor.get(sku_id, "V-101")
+        eta_days = _ETA_BY_URGENCY.get(flag["urgency"], 5)
+        reorder_point = sku.get("reorder_point_units", 1000)
+        safety_stock = sku.get("safety_stock_units", 500)
+
+        if flag["flag_type"] == "at_risk":
+            reorder_qty = max(
+                int(flag["forecast_demand"] * 2) - flag["current_stock"],
+                reorder_point - flag["current_stock"],
+                0,
+            )
+        else:  # excess
+            daily_rate = flag["forecast_demand"] / 7.0 if flag["forecast_demand"] > 0 else 1.0
+            available = flag["current_stock"]
+            excess_units = max(int(available - daily_rate * 14), 0)
+            reorder_qty = -excess_units  # negative = cancel/reduce inbound
+
+        orders.append({
+            "po_number": f"PO-{uuid.uuid4().hex[:6].upper()}",
+            "sku_id": sku_id,
+            "sku_name": sku.get("name", sku_id),
+            "warehouse_id": flag["warehouse_id"],
+            "urgency": flag["urgency"],
+            "flag_type": flag["flag_type"],
+            "current_stock": flag["current_stock"],
+            "forecast_demand_7d": flag["forecast_demand"],
+            "days_of_supply": flag["days_of_supply"],
+            "reorder_qty": reorder_qty,
+            "safety_stock": safety_stock,
+            "reorder_point": reorder_point,
+            "estimated_unit_cost_usd": unit_cost,
+            "estimated_total_cost_usd": round(abs(reorder_qty) * unit_cost, 2),
+            "suggested_vendor": _VENDOR_NAMES.get(vendor_id, vendor_id),
+            "vendor_id": vendor_id,
+            "eta_days": eta_days,
+            "recommended_action": flag["recommended_action"],
+        })
+
+    at_risk_orders = [o for o in orders if o["flag_type"] == "at_risk"]
+    excess_orders = [o for o in orders if o["flag_type"] == "excess"]
+    total_units = sum(o["reorder_qty"] for o in at_risk_orders)
+    total_cost = sum(o["estimated_total_cost_usd"] for o in at_risk_orders)
+    critical_count = sum(1 for o in at_risk_orders if o["urgency"] == "high")
+
+    return {
+        "generated_at": __import__("datetime").datetime.now(
+            __import__("datetime").timezone.utc
+        ).isoformat(),
+        "summary": {
+            "critical_orders": critical_count,
+            "total_orders": len(at_risk_orders),
+            "total_units_to_order": total_units,
+            "total_estimated_cost_usd": round(total_cost, 2),
+            "excess_skus": len(excess_orders),
+        },
+        "replenishment_orders": at_risk_orders,
+        "excess_orders": excess_orders,
+    }
