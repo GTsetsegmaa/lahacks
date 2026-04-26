@@ -1,0 +1,502 @@
+[
+  {
+    "lot_id": "LOT-C48C372C",
+    "sku_id": "SKU-4471",
+    "warehouse_id": "Warehouse-7",
+    "quantity_on_hand": 1071,
+    "quantity_in_transit": 0,
+    "quantity_wip": 200,
+    "expiry_date": "2025-02-16T09:00:00+00:00",
+    "last_updated": "2024-11-18T05:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-82DA7F5E",
+    "sku_id": "SKU-2103",
+    "warehouse_id": "Warehouse-7",
+    "quantity_on_hand": 187,
+    "quantity_in_transit": 50,
+    "quantity_wip": 0,
+    "expiry_date": "2025-05-17T09:00:00+00:00",
+    "last_updated": "2024-11-18T03:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-C3D3627E",
+    "sku_id": "SKU-3892",
+    "warehouse_id": "Warehouse-7",
+    "quantity_on_hand": 234,
+    "quantity_in_transit": 80,
+    "quantity_wip": 0,
+    "expiry_date": "2025-08-15T09:00:00+00:00",
+    "last_updated": "2024-11-18T03:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-3609A0D1",
+    "sku_id": "SKU-1099",
+    "warehouse_id": "WH-3",
+    "quantity_on_hand": 1925,
+    "quantity_in_transit": 300,
+    "quantity_wip": 0,
+    "expiry_date": "2025-09-14T09:00:00+00:00",
+    "last_updated": "2024-11-18T03:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-B3526E00",
+    "sku_id": "SKU-1000",
+    "warehouse_id": "WH-1",
+    "quantity_on_hand": 1042,
+    "quantity_in_transit": 79,
+    "quantity_wip": 78,
+    "expiry_date": "2025-02-16T09:00:00+00:00",
+    "last_updated": "2024-11-18T08:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-7780F6F8",
+    "sku_id": "SKU-1001",
+    "warehouse_id": "WH-9",
+    "quantity_on_hand": 402,
+    "quantity_in_transit": 49,
+    "quantity_wip": 0,
+    "expiry_date": "2025-05-19T09:00:00+00:00",
+    "last_updated": "2024-11-18T01:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-CD858BB6",
+    "sku_id": "SKU-1002",
+    "warehouse_id": "Warehouse-7",
+    "quantity_on_hand": 195,
+    "quantity_in_transit": 21,
+    "quantity_wip": 13,
+    "expiry_date": "2025-01-02T09:00:00+00:00",
+    "last_updated": "2024-11-18T03:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-16CAAB14",
+    "sku_id": "SKU-1003",
+    "warehouse_id": "WH-5",
+    "quantity_on_hand": 944,
+    "quantity_in_transit": 37,
+    "quantity_wip": 21,
+    "expiry_date": "2025-05-19T09:00:00+00:00",
+    "last_updated": "2024-11-18T08:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-0582812C",
+    "sku_id": "SKU-1004",
+    "warehouse_id": "WH-9",
+    "quantity_on_hand": 819,
+    "quantity_in_transit": 95,
+    "quantity_wip": 38,
+    "expiry_date": "2025-05-19T09:00:00+00:00",
+    "last_updated": "2024-11-17T21:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-86918C18",
+    "sku_id": "SKU-1005",
+    "warehouse_id": "WH-5",
+    "quantity_on_hand": 596,
+    "quantity_in_transit": 7,
+    "quantity_wip": 40,
+    "expiry_date": "2025-01-02T09:00:00+00:00",
+    "last_updated": "2024-11-18T01:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-58A6F407",
+    "sku_id": "SKU-1006",
+    "warehouse_id": "WH-9",
+    "quantity_on_hand": 274,
+    "quantity_in_transit": 3,
+    "quantity_wip": 21,
+    "expiry_date": "2025-04-02T09:00:00+00:00",
+    "last_updated": "2024-11-18T04:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-3A41EC09",
+    "sku_id": "SKU-1007",
+    "warehouse_id": "WH-9",
+    "quantity_on_hand": 1135,
+    "quantity_in_transit": 6,
+    "quantity_wip": 36,
+    "expiry_date": "2025-05-19T09:00:00+00:00",
+    "last_updated": "2024-11-18T01:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-C8E2D611",
+    "sku_id": "SKU-1008",
+    "warehouse_id": "WH-9",
+    "quantity_on_hand": 157,
+    "quantity_in_transit": 4,
+    "quantity_wip": 27,
+    "expiry_date": "2025-02-16T09:00:00+00:00",
+    "last_updated": "2024-11-18T04:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-B6A2AEF7",
+    "sku_id": "SKU-1009",
+    "warehouse_id": "WH-9",
+    "quantity_on_hand": 633,
+    "quantity_in_transit": 71,
+    "quantity_wip": 35,
+    "expiry_date": "2025-01-02T09:00:00+00:00",
+    "last_updated": "2024-11-18T04:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-14775C9C",
+    "sku_id": "SKU-1010",
+    "warehouse_id": "WH-1",
+    "quantity_on_hand": 548,
+    "quantity_in_transit": 154,
+    "quantity_wip": 22,
+    "expiry_date": "2025-05-19T09:00:00+00:00",
+    "last_updated": "2024-11-17T23:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-1596481D",
+    "sku_id": "SKU-1011",
+    "warehouse_id": "Warehouse-7",
+    "quantity_on_hand": 896,
+    "quantity_in_transit": 94,
+    "quantity_wip": 22,
+    "expiry_date": "2025-04-02T09:00:00+00:00",
+    "last_updated": "2024-11-18T04:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-EBBEAEAA",
+    "sku_id": "SKU-1012",
+    "warehouse_id": "WH-3",
+    "quantity_on_hand": 449,
+    "quantity_in_transit": 31,
+    "quantity_wip": 11,
+    "expiry_date": "2025-02-16T09:00:00+00:00",
+    "last_updated": "2024-11-18T00:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-AF6BE5D1",
+    "sku_id": "SKU-1013",
+    "warehouse_id": "WH-5",
+    "quantity_on_hand": 855,
+    "quantity_in_transit": 10,
+    "quantity_wip": 18,
+    "expiry_date": "2025-05-19T09:00:00+00:00",
+    "last_updated": "2024-11-17T23:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-0C900D88",
+    "sku_id": "SKU-1014",
+    "warehouse_id": "WH-3",
+    "quantity_on_hand": 571,
+    "quantity_in_transit": 63,
+    "quantity_wip": 26,
+    "expiry_date": "2025-04-02T09:00:00+00:00",
+    "last_updated": "2024-11-18T02:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-DB0B525C",
+    "sku_id": "SKU-1015",
+    "warehouse_id": "Warehouse-7",
+    "quantity_on_hand": 720,
+    "quantity_in_transit": 42,
+    "quantity_wip": 26,
+    "expiry_date": "2025-04-02T09:00:00+00:00",
+    "last_updated": "2024-11-17T23:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-255C8F66",
+    "sku_id": "SKU-1016",
+    "warehouse_id": "WH-5",
+    "quantity_on_hand": 640,
+    "quantity_in_transit": 6,
+    "quantity_wip": 41,
+    "expiry_date": "2025-04-02T09:00:00+00:00",
+    "last_updated": "2024-11-18T04:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-290676DA",
+    "sku_id": "SKU-1017",
+    "warehouse_id": "WH-1",
+    "quantity_on_hand": 443,
+    "quantity_in_transit": 3,
+    "quantity_wip": 10,
+    "expiry_date": "2025-05-19T09:00:00+00:00",
+    "last_updated": "2024-11-18T01:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-781596C8",
+    "sku_id": "SKU-1018",
+    "warehouse_id": "WH-5",
+    "quantity_on_hand": 276,
+    "quantity_in_transit": 30,
+    "quantity_wip": 34,
+    "expiry_date": "2025-04-02T09:00:00+00:00",
+    "last_updated": "2024-11-18T05:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-E3A666F2",
+    "sku_id": "SKU-1019",
+    "warehouse_id": "Warehouse-7",
+    "quantity_on_hand": 756,
+    "quantity_in_transit": 121,
+    "quantity_wip": 33,
+    "expiry_date": "2025-04-02T09:00:00+00:00",
+    "last_updated": "2024-11-18T06:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-0E795B65",
+    "sku_id": "SKU-1020",
+    "warehouse_id": "Warehouse-7",
+    "quantity_on_hand": 380,
+    "quantity_in_transit": 1,
+    "quantity_wip": 18,
+    "expiry_date": "2025-01-02T09:00:00+00:00",
+    "last_updated": "2024-11-18T01:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-3B4B814A",
+    "sku_id": "SKU-1021",
+    "warehouse_id": "WH-5",
+    "quantity_on_hand": 849,
+    "quantity_in_transit": 135,
+    "quantity_wip": 87,
+    "expiry_date": "2025-05-19T09:00:00+00:00",
+    "last_updated": "2024-11-18T08:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-FE56ECBA",
+    "sku_id": "SKU-1022",
+    "warehouse_id": "WH-9",
+    "quantity_on_hand": 464,
+    "quantity_in_transit": 81,
+    "quantity_wip": 45,
+    "expiry_date": "2025-05-19T09:00:00+00:00",
+    "last_updated": "2024-11-18T02:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-15ABCBA7",
+    "sku_id": "SKU-1023",
+    "warehouse_id": "WH-5",
+    "quantity_on_hand": 708,
+    "quantity_in_transit": 42,
+    "quantity_wip": 34,
+    "expiry_date": "2025-01-02T09:00:00+00:00",
+    "last_updated": "2024-11-18T04:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-822EA7C7",
+    "sku_id": "SKU-1024",
+    "warehouse_id": "WH-5",
+    "quantity_on_hand": 989,
+    "quantity_in_transit": 100,
+    "quantity_wip": 59,
+    "expiry_date": "2025-04-02T09:00:00+00:00",
+    "last_updated": "2024-11-17T22:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-E0BF6B14",
+    "sku_id": "SKU-1025",
+    "warehouse_id": "WH-9",
+    "quantity_on_hand": 683,
+    "quantity_in_transit": 24,
+    "quantity_wip": 43,
+    "expiry_date": "2025-04-02T09:00:00+00:00",
+    "last_updated": "2024-11-17T22:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-750BF5B7",
+    "sku_id": "SKU-1026",
+    "warehouse_id": "WH-3",
+    "quantity_on_hand": 1215,
+    "quantity_in_transit": 80,
+    "quantity_wip": 70,
+    "expiry_date": "2025-04-02T09:00:00+00:00",
+    "last_updated": "2024-11-18T08:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-F9CC7043",
+    "sku_id": "SKU-1027",
+    "warehouse_id": "WH-1",
+    "quantity_on_hand": 1064,
+    "quantity_in_transit": 3,
+    "quantity_wip": 52,
+    "expiry_date": "2025-02-16T09:00:00+00:00",
+    "last_updated": "2024-11-18T07:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-09B30A63",
+    "sku_id": "SKU-1028",
+    "warehouse_id": "Warehouse-7",
+    "quantity_on_hand": 520,
+    "quantity_in_transit": 44,
+    "quantity_wip": 14,
+    "expiry_date": "2025-01-02T09:00:00+00:00",
+    "last_updated": "2024-11-17T21:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-4631E413",
+    "sku_id": "SKU-1029",
+    "warehouse_id": "WH-3",
+    "quantity_on_hand": 578,
+    "quantity_in_transit": 4,
+    "quantity_wip": 3,
+    "expiry_date": "2025-04-02T09:00:00+00:00",
+    "last_updated": "2024-11-17T23:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-01C43546",
+    "sku_id": "SKU-1030",
+    "warehouse_id": "WH-9",
+    "quantity_on_hand": 624,
+    "quantity_in_transit": 55,
+    "quantity_wip": 76,
+    "expiry_date": "2025-02-16T09:00:00+00:00",
+    "last_updated": "2024-11-17T22:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-B563A004",
+    "sku_id": "SKU-1031",
+    "warehouse_id": "WH-1",
+    "quantity_on_hand": 649,
+    "quantity_in_transit": 22,
+    "quantity_wip": 109,
+    "expiry_date": "2025-05-19T09:00:00+00:00",
+    "last_updated": "2024-11-17T23:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-03940F27",
+    "sku_id": "SKU-1032",
+    "warehouse_id": "WH-9",
+    "quantity_on_hand": 617,
+    "quantity_in_transit": 47,
+    "quantity_wip": 14,
+    "expiry_date": "2025-05-19T09:00:00+00:00",
+    "last_updated": "2024-11-17T21:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-C42B098F",
+    "sku_id": "SKU-1033",
+    "warehouse_id": "WH-5",
+    "quantity_on_hand": 745,
+    "quantity_in_transit": 119,
+    "quantity_wip": 84,
+    "expiry_date": "2025-05-19T09:00:00+00:00",
+    "last_updated": "2024-11-18T07:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-7B52A0B0",
+    "sku_id": "SKU-1034",
+    "warehouse_id": "WH-5",
+    "quantity_on_hand": 1161,
+    "quantity_in_transit": 109,
+    "quantity_wip": 88,
+    "expiry_date": "2025-04-02T09:00:00+00:00",
+    "last_updated": "2024-11-17T22:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-F63C75FF",
+    "sku_id": "SKU-1035",
+    "warehouse_id": "WH-5",
+    "quantity_on_hand": 655,
+    "quantity_in_transit": 32,
+    "quantity_wip": 10,
+    "expiry_date": "2025-05-19T09:00:00+00:00",
+    "last_updated": "2024-11-18T07:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-B5E446D1",
+    "sku_id": "SKU-1036",
+    "warehouse_id": "WH-1",
+    "quantity_on_hand": 227,
+    "quantity_in_transit": 24,
+    "quantity_wip": 24,
+    "expiry_date": "2025-01-02T09:00:00+00:00",
+    "last_updated": "2024-11-18T03:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-B7B65115",
+    "sku_id": "SKU-1037",
+    "warehouse_id": "WH-5",
+    "quantity_on_hand": 1000,
+    "quantity_in_transit": 104,
+    "quantity_wip": 33,
+    "expiry_date": "2025-01-02T09:00:00+00:00",
+    "last_updated": "2024-11-18T06:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-666AF7E6",
+    "sku_id": "SKU-1038",
+    "warehouse_id": "Warehouse-7",
+    "quantity_on_hand": 225,
+    "quantity_in_transit": 12,
+    "quantity_wip": 19,
+    "expiry_date": "2025-01-02T09:00:00+00:00",
+    "last_updated": "2024-11-18T02:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-A014410A",
+    "sku_id": "SKU-1039",
+    "warehouse_id": "Warehouse-7",
+    "quantity_on_hand": 684,
+    "quantity_in_transit": 27,
+    "quantity_wip": 18,
+    "expiry_date": "2025-04-02T09:00:00+00:00",
+    "last_updated": "2024-11-18T00:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-E7BAB408",
+    "sku_id": "SKU-1040",
+    "warehouse_id": "WH-3",
+    "quantity_on_hand": 951,
+    "quantity_in_transit": 27,
+    "quantity_wip": 56,
+    "expiry_date": "2025-05-19T09:00:00+00:00",
+    "last_updated": "2024-11-17T21:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-41298809",
+    "sku_id": "SKU-1041",
+    "warehouse_id": "WH-1",
+    "quantity_on_hand": 311,
+    "quantity_in_transit": 9,
+    "quantity_wip": 4,
+    "expiry_date": "2025-01-02T09:00:00+00:00",
+    "last_updated": "2024-11-17T23:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-C5AE54D6",
+    "sku_id": "SKU-1042",
+    "warehouse_id": "Warehouse-7",
+    "quantity_on_hand": 311,
+    "quantity_in_transit": 1,
+    "quantity_wip": 28,
+    "expiry_date": "2025-05-19T09:00:00+00:00",
+    "last_updated": "2024-11-18T01:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-2AB9997F",
+    "sku_id": "SKU-1043",
+    "warehouse_id": "WH-1",
+    "quantity_on_hand": 414,
+    "quantity_in_transit": 4,
+    "quantity_wip": 49,
+    "expiry_date": "2025-05-19T09:00:00+00:00",
+    "last_updated": "2024-11-18T04:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-7A8C6FEF",
+    "sku_id": "SKU-1044",
+    "warehouse_id": "WH-5",
+    "quantity_on_hand": 579,
+    "quantity_in_transit": 100,
+    "quantity_wip": 73,
+    "expiry_date": "2025-02-16T09:00:00+00:00",
+    "last_updated": "2024-11-18T08:00:00+00:00"
+  },
+  {
+    "lot_id": "LOT-48A67F75",
+    "sku_id": "SKU-1045",
+    "warehouse_id": "Warehouse-7",
+    "quantity_on_hand": 663,
+    "quantity_in_transit": 61,
+    "quantity_wip": 55,
+    "expiry_date": "2025-04-02T09:00:00+00:00",
+    "last_updated": "2024-11-18T02:00:00+00:00"
+  }
+]
