@@ -1,4 +1,4 @@
-"""LLM client using OpenAI-compatible /v1/chat/completions (ASI-1 or any provider)."""
+"""LLM client wrapping Ollama running on the ASUS Ascent GX10 NPU."""
 from __future__ import annotations
 
 import logging
@@ -8,43 +8,38 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.asi1.ai/v1")
-LLM_MODEL = os.getenv("LLM_MODEL", "asi1-mini")
-LLM_API_KEY = os.getenv("LLM_API_KEY", "")
+# Inside Docker on Linux, host.docker.internal resolves via extra_hosts: host-gateway
+OLLAMA_URL = os.getenv("LLM_BASE_URL", "http://host.docker.internal:11434")
+OLLAMA_MODEL = os.getenv("LLM_MODEL", "gemma3")
 
 
 def generate_reasoning(prompt: str) -> str:
-    """Call the configured LLM via OpenAI-compatible chat completions API."""
-    if not LLM_API_KEY:
-        logger.warning("LLM_API_KEY not set — skipping inference.")
-        return _stub_response(prompt)
-
+    """Call Ollama /api/generate; fall back to context-aware stub if unreachable."""
     try:
-        with httpx.Client(timeout=60.0) as client:
+        with httpx.Client(timeout=120.0) as client:
             resp = client.post(
-                f"{LLM_BASE_URL}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {LLM_API_KEY}",
-                    "Content-Type": "application/json",
-                },
+                f"{OLLAMA_URL}/api/generate",
                 json={
-                    "model": LLM_MODEL,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.3,
-                    "max_tokens": 512,
+                    "model": OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.3,
+                        "num_predict": 512,
+                    },
                 },
             )
             resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"].strip()
+            return resp.json()["response"].strip()
     except Exception as exc:
-        logger.warning("LLM call failed (%s) — using stub reasoning.", exc)
+        logger.warning("Ollama unavailable (%s) — using stub reasoning.", exc)
         return _stub_response(prompt)
 
 
 def _stub_response(prompt: str) -> str:
-    """Minimal stub when no API key is configured or call fails."""
-    prompt_lower = prompt.lower()
-    if "demand" in prompt_lower or "spike" in prompt_lower or "forecast" in prompt_lower:
+    """Context-aware stub for when Ollama is not yet running."""
+    p = prompt.lower()
+    if "demand" in p or "spike" in p or "forecast" in p:
         return (
             "Historical shipment data shows SKU-4471 (Diamond Foods Holiday Mixed Nuts) "
             "averaging 510+ units/day over the past 6 days against a 90-day baseline of "
@@ -52,23 +47,30 @@ def _stub_response(prompt: str) -> str:
             "the active Thanksgiving promo overlay (+120%) fully accounts for this spike. "
             "Forecast confidence is high given three corroborating signals."
         )
-    if "vendor" in prompt_lower or "supplier" in prompt_lower:
+    if "vendor" in p or "supplier" in p:
         return (
-            "Vendor analysis complete. Supplier A offers the best risk-adjusted lead time "
-            "with 97% on-time delivery over the past 90 days. Recommend single-sourcing "
+            "Vendor analysis complete. Pacific Grove Supply Co. offers the best risk-adjusted "
+            "lead time with 97% on-time delivery over the past 90 days. Recommend single-sourcing "
             "the emergency replenishment order given current demand urgency."
         )
-    if "shipment" in prompt_lower or "consolidat" in prompt_lower:
+    if "freight" in p or "shipment" in p or "consolidat" in p or "logistic" in p:
         return (
             "Two open purchase orders are routing to the same DC within a 48-hour window. "
-            "Consolidating into a single LTL shipment reduces freight cost by approximately "
-            "$420 and cuts carrier coordination overhead. Recommend consolidation."
+            "Consolidating into a single intermodal shipment reduces freight cost by approximately "
+            "$420 and cuts carrier coordination overhead. Transit increases by 2 days — acceptable "
+            "given the advance notice window."
         )
-    if "expir" in prompt_lower or "inventory" in prompt_lower:
+    if "expir" in p or "inventory" in p or "stock" in p:
         return (
-            "Three lots totaling 840 units expire within 48 hours. Recommend immediate "
-            "markdown promotion or redistribution to secondary DC to recover value before "
-            "the FIFO priority window closes."
+            "Three lots totaling 840 units are within 48 hours of expiry. Recommend immediate "
+            "markdown or redistribution to a secondary DC to recover value before the FIFO "
+            "priority window closes. SKU-4471 current stock covers less than 3 days at spike rate."
+        )
+    if "market" in p or "signal" in p or "surcharge" in p:
+        return (
+            "Fuel surcharge on the Gulf Coast-Midwest truck lane has risen 18% above the "
+            "30-day average. Switching the two open POs to intermodal locks in current rates "
+            "and avoids further exposure. No adverse weather events detected on primary lanes."
         )
     return (
         "Analysis complete. All supply chain metrics are within acceptable thresholds. "
