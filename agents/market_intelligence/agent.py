@@ -21,7 +21,10 @@ agent = Agent(
     name="market_intelligence",
     seed="market_intelligence_seed_supplymind_2024",
     port=8004,
-    endpoint=["http://localhost:8004/submit"],
+    network="testnet",
+    mailbox=True,
+    publish_agent_details=True,
+    readme_path=str(Path(__file__).resolve().parent / "README.md"),
 )
 
 AGENT_ADDRESS = agent.address
@@ -36,7 +39,7 @@ async def on_startup(ctx: Context) -> None:
 async def handle_request(ctx: Context, sender: str, msg: MarketIntelRequest) -> None:
     ctx.logger.info("MarketIntelRequest from %s", sender)
 
-    decision = run_market_intelligence()
+    decision = await run_market_intelligence(ctx)
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:

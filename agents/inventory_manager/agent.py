@@ -22,7 +22,10 @@ agent = Agent(
     name="inventory_manager",
     seed="inventory_manager_seed_supplymind_2024",
     port=8005,
-    endpoint=["http://localhost:8005/submit"],
+    network="testnet",
+    mailbox=True,
+    publish_agent_details=True,
+    readme_path=str(Path(__file__).resolve().parent / "README.md"),
 )
 
 AGENT_ADDRESS = agent.address
@@ -40,7 +43,7 @@ async def handle_request(
     ctx.logger.info("InventoryAssessmentRequest from %s", sender)
 
     demand_decision = json.loads(msg.demand_decision_json)
-    decision = run_inventory_assessment(demand_decision)
+    decision = await run_inventory_assessment(demand_decision, ctx)
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:

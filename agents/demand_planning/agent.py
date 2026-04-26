@@ -24,8 +24,11 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 agent = Agent(
     name="demand_planning",
     seed="demand_planning_seed_supplymind_2024",
-    port=8001,
-    endpoint=["http://localhost:8001/submit"],
+    port=8007,
+    network="testnet",
+    mailbox=True,
+    publish_agent_details=True,
+    readme_path=str(Path(__file__).resolve().parent / "README.md"),
 )
 
 # Exported so trigger_demand.py can resolve the address without starting a server
@@ -41,7 +44,7 @@ async def on_startup(ctx: Context) -> None:
 async def handle_forecast_request(ctx: Context, sender: str, msg: ForecastRequest) -> None:
     ctx.logger.info("ForecastRequest from %s (week %d)", sender, msg.week)
 
-    decision = run_demand_planning()
+    decision = await run_demand_planning(ctx)
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:

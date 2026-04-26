@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from shared.contracts import AgentDecision, ExternalSignal
-from agents.common.llm_client import generate_reasoning
+from agents.common.llm_client import generate_reasoning, query_asi1
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "shared" / "mock_data"
 
@@ -21,7 +21,7 @@ def _load(filename: str) -> list:
     return json.loads((DATA_DIR / filename).read_text())
 
 
-def run_market_intelligence() -> AgentDecision:
+async def run_market_intelligence(ctx=None) -> AgentDecision:
     raw_signals = _load("external_signals.json")
     cutoff = NOW - timedelta(hours=SIGNAL_WINDOW_HOURS)
 
@@ -48,7 +48,7 @@ def run_market_intelligence() -> AgentDecision:
         "dashboard activity log. Be precise and flag the most urgent signal first.\n\n"
         + "\n".join(f"- {d}" for d in descriptions)
     )
-    reasoning = generate_reasoning(prompt)
+    reasoning = await query_asi1(ctx, prompt) if ctx else generate_reasoning(prompt)
 
     return AgentDecision(
         agent_name="market_intelligence",

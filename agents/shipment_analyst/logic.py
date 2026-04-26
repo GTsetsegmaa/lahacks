@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from shared.contracts import AgentDecision, FreightRecommendation
-from agents.common.llm_client import generate_reasoning
+from agents.common.llm_client import generate_reasoning, query_asi1
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "shared" / "mock_data"
 
@@ -21,9 +21,10 @@ def _load(filename: str) -> list:
     return json.loads((DATA_DIR / filename).read_text())
 
 
-def run_freight_analysis(
+async def run_freight_analysis(
     inventory_flags: list[dict],
     market_signals: list[dict],
+    ctx=None,
 ) -> AgentDecision:
     rates = _load("freight_rates.json")
 
@@ -88,7 +89,7 @@ def run_freight_analysis(
         f"Transit time increases by 2 days (3→5 days) — acceptable given advance notice.\n\n"
         "Be precise and highlight the savings. Do not use bullet points."
     )
-    reasoning = generate_reasoning(prompt)
+    reasoning = await query_asi1(ctx, prompt) if ctx else generate_reasoning(prompt)
 
     return AgentDecision(
         agent_name="shipment_analyst",

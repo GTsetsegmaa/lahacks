@@ -82,7 +82,7 @@ async def trigger_demand() -> dict:
     """Invoke demand planning logic directly and post the decision."""
     from agents.demand_planning.logic import run_demand_planning  # lazy import
 
-    decision = run_demand_planning()
+    decision = await run_demand_planning()
     _decisions.append(decision)
     await _broadcast(decision.model_dump_json())
     return {"status": "triggered", "summary": decision.summary}
@@ -100,17 +100,17 @@ async def trigger_cascade() -> dict:
     from shared.contracts import AgentDecision
 
     # Stage 1: Market Intelligence
-    market_decision = run_market_intelligence()
+    market_decision = await run_market_intelligence()
     _decisions.append(market_decision)
     await _broadcast(market_decision.model_dump_json())
 
     # Stage 2: Demand Planning
-    demand_decision = run_demand_planning()
+    demand_decision = await run_demand_planning()
     _decisions.append(demand_decision)
     await _broadcast(demand_decision.model_dump_json())
 
     # Stage 3: Inventory Assessment
-    inventory_decision = run_inventory_assessment(demand_decision.model_dump())
+    inventory_decision = await run_inventory_assessment(demand_decision.model_dump())
     _decisions.append(inventory_decision)
     await _broadcast(inventory_decision.model_dump_json())
 
@@ -118,7 +118,7 @@ async def trigger_cascade() -> dict:
     market_outputs = market_decision.outputs
     active_signals = market_outputs.get("active_signals", [])
     flags = inventory_decision.outputs.get("flags", [])
-    freight_decision = run_freight_analysis(flags, active_signals)
+    freight_decision = await run_freight_analysis(flags, active_signals)
     _decisions.append(freight_decision)
     await _broadcast(freight_decision.model_dump_json())
 
@@ -350,8 +350,8 @@ async def get_replenishment_plan() -> dict:
     for rec in prod_raw:
         sku_vendor.setdefault(rec["sku_id"], rec["vendor_id"])
 
-    demand_decision = run_demand_planning()
-    inventory_decision = run_inventory_assessment(demand_decision.model_dump())
+    demand_decision = await run_demand_planning()
+    inventory_decision = await run_inventory_assessment(demand_decision.model_dump())
 
     flags: list[dict] = inventory_decision.outputs.get("flags", [])
 

@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from shared.contracts import AgentDecision, InventoryFlag
-from agents.common.llm_client import generate_reasoning
+from agents.common.llm_client import generate_reasoning, query_asi1
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "shared" / "mock_data"
 
@@ -21,7 +21,7 @@ def _load(filename: str) -> list:
     return json.loads((DATA_DIR / filename).read_text())
 
 
-def run_inventory_assessment(demand_decision: dict) -> AgentDecision:
+async def run_inventory_assessment(demand_decision: dict, ctx=None) -> AgentDecision:
     """
     demand_decision: deserialized AgentDecision dict from demand_planning.
     """
@@ -101,7 +101,7 @@ def run_inventory_assessment(demand_decision: dict) -> AgentDecision:
         f"will be depleted in under 3 days without replenishment.\n\n"
         "Be precise. Do not use bullet points."
     )
-    reasoning = generate_reasoning(prompt)
+    reasoning = await query_asi1(ctx, prompt) if ctx else generate_reasoning(prompt)
 
     return AgentDecision(
         agent_name="inventory_manager",

@@ -1,17 +1,17 @@
 """
 Coordinator Agent — Chat Protocol entry point for ASI:One.
 
-Full cascade:
+True multi-agent cascade via ctx.send() message passing:
   ASI:One → ChatMessage → Coordinator
-  Coordinator → MarketIntelRequest  → Market Intelligence
+  Coordinator → MarketIntelRequest       → Market Intelligence Agent
   Market Intelligence → MarketIntelResponse → Coordinator
-  Coordinator → ForecastRequest → Demand Planning
-  Demand Planning → ForecastResponse → Coordinator
-  Coordinator → InventoryAssessmentRequest → Inventory Manager
+  Coordinator → ForecastRequest          → Demand Planning Agent
+  Demand Planning → ForecastResponse     → Coordinator
+  Coordinator → InventoryAssessmentRequest → Inventory Manager Agent
   Inventory Manager → InventoryAssessmentResponse → Coordinator
-  Coordinator → FreightAnalysisRequest → Shipment Analyst
+  Coordinator → FreightAnalysisRequest   → Shipment Analyst Agent
   Shipment Analyst → FreightAnalysisResponse → Coordinator
-  Coordinator → ChatMessage (synthesis reply) → ASI:One
+  Coordinator → ASI-1 synthesis → ChatMessage reply → ASI:One
 """
 from __future__ import annotations
 
@@ -36,6 +36,7 @@ def _load_prompt_config() -> dict:
 def _cfg(key: str, fallback: str = "") -> str:
     return _load_prompt_config().get(key, fallback)
 
+
 import httpx
 from uagents import Agent, Context, Protocol
 from uagents_core.contrib.protocols.chat import (
@@ -44,20 +45,37 @@ from uagents_core.contrib.protocols.chat import (
     TextContent,
     chat_protocol_spec,
 )
+from uagents_core.identity import Identity
 
 asyncio.set_event_loop(asyncio.new_event_loop())
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-from agents.common.llm_client import generate_reasoning
-from agents.demand_planning.logic import run_demand_planning
-from agents.inventory_manager.logic import run_inventory_assessment
-from agents.market_intelligence.logic import run_market_intelligence
-from agents.shipment_analyst.logic import run_freight_analysis
+from agents.common.llm_client import ASI1_ADDRESS, query_asi1, resolve_response
+from agents.common.messages import (
+    ForecastRequest,
+    ForecastResponse,
+    FreightAnalysisRequest,
+    FreightAnalysisResponse,
+    InventoryAssessmentRequest,
+    InventoryAssessmentResponse,
+    MarketIntelRequest,
+    MarketIntelResponse,
+)
 from shared.contracts import AgentDecision
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
-# Guard against mailbox re-delivery while a slow Ollama cascade is in-flight
+# Deterministic addresses derived from each specialist agent's seed (index 0)
+MARKET_INTEL_ADDRESS    = Identity.from_seed("market_intelligence_seed_supplymind_2024", 0).address
+DEMAND_PLANNING_ADDRESS = Identity.from_seed("demand_planning_seed_supplymind_2024", 0).address
+INVENTORY_MGR_ADDRESS   = Identity.from_seed("inventory_manager_seed_supplymind_2024", 0).address
+SHIPMENT_ANALYST_ADDRESS= Identity.from_seed("shipment_analyst_seed_supplymind_2024", 0).address
+
+# One pending future per cascade stage — keyed by stage name.
+# Safe because the cascade is strictly sequential: only one stage is in-flight at a time.
+_pending: dict[str, asyncio.Future] = {}
+
+# Guard against mailbox re-delivery while a cascade is in-flight
 _processing: set[str] = set()
 
 coordinator = Agent(
@@ -65,54 +83,94 @@ coordinator = Agent(
     seed="coordinator_seed_supplymind_2024",
     port=8003,
     mailbox=True,
+    publish_agent_details=True,
+    readme_path=str(Path(__file__).resolve().parent / "README.md"),
 )
 
 chat_proto = Protocol(spec=chat_protocol_spec)
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+async def _post_synthesis(decision: AgentDecision) -> None:
+    """Post the coordinator's synthesis decision to the backend."""
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            resp = await client.post(
+                f"{BACKEND_URL}/api/decisions",
+                content=decision.model_dump_json(),
+                headers={"Content-Type": "application/json"},
+            )
+            resp.raise_for_status()
+        except Exception as exc:  # noqa: BLE001
+            pass  # logged by caller
+
+
+async def _send_and_wait(
+    ctx: Context,
+    address: str,
+    message,
+    stage: str,
+    timeout: float = 120.0,
+):
+    """Send a message to a specialist agent and block until its response arrives."""
+    loop = asyncio.get_event_loop()
+    fut: asyncio.Future = loop.create_future()
+    _pending[stage] = fut
+    await ctx.send(address, message)
+    try:
+        return await asyncio.wait_for(asyncio.shield(fut), timeout=timeout)
+    finally:
+        _pending.pop(stage, None)
+
+
+# ---------------------------------------------------------------------------
+# True multi-agent cascade
+# ---------------------------------------------------------------------------
+
 async def _run_cascade(ctx: Context) -> str:
-    """Run all 4 agent logics inline, post each decision, return the synthesis reply."""
     cfg = _load_prompt_config()
 
-    async def _post(decision: AgentDecision) -> None:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            try:
-                resp = await client.post(
-                    f"{BACKEND_URL}/api/decisions",
-                    content=decision.model_dump_json(),
-                    headers={"Content-Type": "application/json"},
-                )
-                resp.raise_for_status()
-            except Exception as exc:  # noqa: BLE001
-                ctx.logger.error("Failed to post decision: %s", exc)
-
     # Stage 1 — Market Intelligence
-    market_decision = run_market_intelligence()
-    await _post(market_decision)
-    ctx.logger.info("Market Intelligence complete")
+    ctx.logger.info("→ Dispatching MarketIntelRequest")
+    market: MarketIntelResponse = await _send_and_wait(
+        ctx, MARKET_INTEL_ADDRESS, MarketIntelRequest(), "market_intel"
+    )
+    ctx.logger.info("✓ MarketIntelResponse: %s", market.summary[:80])
 
     # Stage 2 — Demand Planning
-    demand_decision = run_demand_planning()
-    await _post(demand_decision)
-    ctx.logger.info("Demand Planning complete")
+    ctx.logger.info("→ Dispatching ForecastRequest")
+    demand: ForecastResponse = await _send_and_wait(
+        ctx, DEMAND_PLANNING_ADDRESS, ForecastRequest(week=47), "demand"
+    )
+    ctx.logger.info("✓ ForecastResponse: %s", demand.summary[:80])
 
-    # Stage 3 — Inventory Assessment
-    inventory_decision = run_inventory_assessment(demand_decision.model_dump())
-    await _post(inventory_decision)
-    ctx.logger.info("Inventory Assessment complete")
+    # Stage 3 — Inventory Assessment (needs demand decision as input)
+    ctx.logger.info("→ Dispatching InventoryAssessmentRequest")
+    inventory: InventoryAssessmentResponse = await _send_and_wait(
+        ctx,
+        INVENTORY_MGR_ADDRESS,
+        InventoryAssessmentRequest(demand_decision_json=demand.decision_json),
+        "inventory",
+    )
+    ctx.logger.info("✓ InventoryAssessmentResponse: %s", inventory.summary[:80])
 
-    # Stage 4 — Freight Analysis
-    active_signals = market_decision.outputs.get("active_signals", [])
-    flags = inventory_decision.outputs.get("flags", [])
-    freight_decision = run_freight_analysis(flags, active_signals)
-    await _post(freight_decision)
-    ctx.logger.info("Freight Analysis complete")
+    # Stage 4 — Freight Analysis (needs inventory flags + market signals)
+    ctx.logger.info("→ Dispatching FreightAnalysisRequest")
+    freight: FreightAnalysisResponse = await _send_and_wait(
+        ctx,
+        SHIPMENT_ANALYST_ADDRESS,
+        FreightAnalysisRequest(
+            inventory_flags_json=inventory.flags_json,
+            market_signals_json=market.signals_json,
+        ),
+        "freight",
+    )
+    ctx.logger.info("✓ FreightAnalysisResponse: savings=$%s", freight.total_savings_usd)
 
-    # Stage 5 — Synthesis reply
-    at_risk = inventory_decision.outputs.get("at_risk_count", 0)
-    savings = freight_decision.outputs.get("total_savings_usd", 0.0)
-    rerouted = freight_decision.outputs.get("rerouted_count", 0)
-
+    # Stage 5 — ASI-1 synthesis
     persona = cfg.get(
         "agent_persona",
         "You are SupplyMind, an AI supply chain orchestrator for Diamond Foods.",
@@ -124,27 +182,35 @@ async def _run_cascade(ctx: Context) -> str:
     )
     context_template = cfg.get("synthesis_context", "")
     context_filled = (
-        context_template.format(rerouted_count=rerouted, savings=savings)
+        context_template.format(
+            rerouted_count=freight.rerouted_count,
+            savings=freight.total_savings_usd,
+        )
         if context_template else ""
     )
 
     synthesis_prompt = (
         f"{persona}\n"
         f"{instructions}\n\n"
-        f"Market: {market_decision.summary}\n"
-        f"Demand: {demand_decision.summary}\n"
-        f"Inventory: {inventory_decision.summary}\n"
-        f"Freight: {freight_decision.summary}\n"
+        f"Market: {market.summary}\n"
+        f"Demand: {demand.summary}\n"
+        f"Inventory: {inventory.summary}\n"
+        f"Freight: {freight.summary}\n"
         + (f"\n{context_filled}" if context_filled else "")
     )
-    reply_text = generate_reasoning(synthesis_prompt)
 
+    ctx.logger.info("→ Requesting ASI-1 synthesis")
+    reply_text = await query_asi1(ctx, synthesis_prompt)
+    ctx.logger.info("✓ Synthesis ready")
+
+    # Post coordinator synthesis decision
     synthesis_decision = AgentDecision(
         agent_name="coordinator",
         decision_type="synthesis",
         summary=(
-            f"Full cascade complete: 340% demand spike on SKU-4471, "
-            f"{at_risk} at-risk SKUs, ${savings:,.0f} freight savings."
+            f"Full cascade complete: demand spike on SKU-4471, "
+            f"{inventory.at_risk_count} at-risk SKUs, "
+            f"${freight.total_savings_usd:,.0f} freight savings."
         ),
         reasoning=reply_text,
         confidence=0.93,
@@ -156,34 +222,78 @@ async def _run_cascade(ctx: Context) -> str:
         ],
         outputs={
             "cascade_complete": True,
-            "at_risk_count": at_risk,
-            "excess_count": inventory_decision.outputs.get("excess_count", 0),
-            "total_savings_usd": savings,
-            "rerouted_count": rerouted,
+            "at_risk_count": inventory.at_risk_count,
+            "excess_count": inventory.excess_count,
+            "total_savings_usd": freight.total_savings_usd,
+            "rerouted_count": freight.rerouted_count,
         },
         timestamp=datetime.now(timezone.utc),
         downstream_targets=[],
     )
-    await _post(synthesis_decision)
-    ctx.logger.info("Synthesis complete — reply ready")
+    await _post_synthesis(synthesis_decision)
 
     return reply_text
 
 
+# ---------------------------------------------------------------------------
+# Specialist agent response handlers
+# ---------------------------------------------------------------------------
+
+@coordinator.on_message(MarketIntelResponse)
+async def handle_market_intel_response(ctx: Context, sender: str, msg: MarketIntelResponse) -> None:
+    ctx.logger.debug("MarketIntelResponse from %s", sender)
+    fut = _pending.get("market_intel")
+    if fut and not fut.done():
+        fut.set_result(msg)
+
+
+@coordinator.on_message(ForecastResponse)
+async def handle_forecast_response(ctx: Context, sender: str, msg: ForecastResponse) -> None:
+    ctx.logger.debug("ForecastResponse from %s", sender)
+    fut = _pending.get("demand")
+    if fut and not fut.done():
+        fut.set_result(msg)
+
+
+@coordinator.on_message(InventoryAssessmentResponse)
+async def handle_inventory_response(ctx: Context, sender: str, msg: InventoryAssessmentResponse) -> None:
+    ctx.logger.debug("InventoryAssessmentResponse from %s", sender)
+    fut = _pending.get("inventory")
+    if fut and not fut.done():
+        fut.set_result(msg)
+
+
+@coordinator.on_message(FreightAnalysisResponse)
+async def handle_freight_response(ctx: Context, sender: str, msg: FreightAnalysisResponse) -> None:
+    ctx.logger.debug("FreightAnalysisResponse from %s", sender)
+    fut = _pending.get("freight")
+    if fut and not fut.done():
+        fut.set_result(msg)
+
+
+# ---------------------------------------------------------------------------
+# Startup
+# ---------------------------------------------------------------------------
+
 @coordinator.on_event("startup")
 async def on_startup(ctx: Context) -> None:
     ctx.logger.info("Coordinator ready. Address: %s", ctx.agent.address)
+    ctx.logger.info("Specialist addresses:")
+    ctx.logger.info("  market_intelligence : %s", MARKET_INTEL_ADDRESS)
+    ctx.logger.info("  demand_planning     : %s", DEMAND_PLANNING_ADDRESS)
+    ctx.logger.info("  inventory_manager   : %s", INVENTORY_MGR_ADDRESS)
+    ctx.logger.info("  shipment_analyst    : %s", SHIPMENT_ANALYST_ADDRESS)
 
 
 # ---------------------------------------------------------------------------
 # Chat Protocol — entry point from ASI:One
 # ---------------------------------------------------------------------------
 
-async def _cascade_and_reply(ctx: Context, sender: str, msg_key: str, user_text: str) -> None:
+async def _cascade_and_reply(ctx: Context, sender: str, msg_key: str) -> None:
     try:
         reply_text = await _run_cascade(ctx)
     except Exception as exc:
-        ctx.logger.error("Cascade failed: %s", exc)
+        ctx.logger.error("Cascade failed: %s", exc, exc_info=True)
         reply_text = _cfg(
             "no_results_reply",
             "I was unable to complete the supply chain analysis. Please try again.",
@@ -201,8 +311,13 @@ async def _cascade_and_reply(ctx: Context, sender: str, msg_key: str, user_text:
 
 @chat_proto.on_message(ChatMessage)
 async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> None:
-    # Ack immediately — this marks the message as processed in the mailbox
-    # so re-polls don't re-deliver it while the slow Ollama cascade runs.
+    # ASI-1 synthesis responses arrive as ChatMessages — route to the LLM future.
+    if sender == ASI1_ADDRESS:
+        text = next((c.text for c in msg.content if isinstance(c, TextContent)), "")
+        resolve_response(text)
+        return
+
+    # Ack immediately so the mailbox doesn't re-deliver during the long cascade.
     await ctx.send(sender, ChatAcknowledgement(
         timestamp=datetime.now(timezone.utc),
         acknowledged_msg_id=msg.msg_id,
@@ -214,13 +329,12 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
         return
     _processing.add(msg_key)
 
-    text_parts = [c.text for c in msg.content if isinstance(c, TextContent)]
-    user_text = " ".join(text_parts).strip() or "(no text)"
+    user_text = " ".join(
+        c.text for c in msg.content if isinstance(c, TextContent)
+    ).strip() or "(no text)"
     ctx.logger.info("Chat from %s: %s", sender, user_text[:120])
 
-    # Fire cascade in the background so this handler returns immediately.
-    # uAgents will not re-deliver the message because the ack was already sent.
-    asyncio.create_task(_cascade_and_reply(ctx, sender, msg_key, user_text))
+    asyncio.create_task(_cascade_and_reply(ctx, sender, msg_key))
 
 
 @chat_proto.on_message(ChatAcknowledgement)
@@ -229,7 +343,7 @@ async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement) -> Non
 
 
 # ---------------------------------------------------------------------------
-# Register chat protocol
+# Register chat protocol and run
 # ---------------------------------------------------------------------------
 coordinator.include(chat_proto, publish_manifest=True)
 

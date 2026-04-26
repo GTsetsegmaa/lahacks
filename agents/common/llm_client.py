@@ -1,78 +1,103 @@
-"""LLM client wrapping Ollama running on the ASUS Ascent GX10 NPU."""
+"""LLM client — two paths:
+
+  1. async query_asi1(ctx, prompt)  — uAgents Chat Protocol, used by the coordinator
+     which is already a registered mailbox agent. ASI-1 address is the model.
+
+  2. generate_reasoning(prompt)     — REST API, used by the FastAPI backend
+     which has no uAgent context.
+"""
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
+from datetime import datetime, timezone
+from uuid import uuid4
 
-import httpx
+import requests
 
 logger = logging.getLogger(__name__)
 
-# Inside Docker on Linux, host.docker.internal resolves via extra_hosts: host-gateway
-OLLAMA_URL = os.getenv("LLM_BASE_URL", "http://host.docker.internal:11434")
+# Matches the env var name used in the ASI-1 docs
+ASI1_API_KEY = (
+    os.getenv("ASI_ONE_API_KEY") or
+    os.getenv("ASI1_API_KEY") or
+    ""
+)
+ASI1_API_URL = "https://api.asi1.ai/v1/chat/completions"
+ASI1_MODEL   = os.getenv("ASI1_MODEL", "asi1")
+
+# uAgents Chat Protocol destination — ASI-1 agent address on Agentverse
+ASI1_ADDRESS = os.getenv(
+    "ASI1_AGENT_ADDRESS",
+    "agent1qd3h050w5h39ynpfe5feyq6nt47v7xvtszt2j8yjkmvme6kfxm5d7ckaddr",
+)
+
+OLLAMA_URL   = os.getenv("LLM_BASE_URL", "http://host.docker.internal:11434")
 OLLAMA_MODEL = os.getenv("LLM_MODEL", "gemma3")
+
+# Single pending slot — cascade is sequential so only one LLM call is in-flight.
+_pending: asyncio.Future[str] | None = None
+
+
+async def query_asi1(ctx, prompt: str) -> str:  # ctx: uagents.Context
+    """Send prompt to ASI-1 via Fetch.ai Chat Protocol; await the response."""
+    from uagents_core.contrib.protocols.chat import ChatMessage, TextContent
+
+    global _pending
+    loop = asyncio.get_event_loop()
+    _pending = loop.create_future()
+
+    await ctx.send(
+        ASI1_ADDRESS,
+        ChatMessage(
+            timestamp=datetime.now(timezone.utc),
+            msg_id=uuid4(),
+            content=[TextContent(type="text", text=prompt)],
+        ),
+    )
+
+    try:
+        return await asyncio.wait_for(asyncio.shield(_pending), timeout=60.0)
+    finally:
+        _pending = None
+
+
+def resolve_response(text: str) -> None:
+    """Called by coordinator's message handler when ASI-1 replies."""
+    global _pending
+    if _pending is not None and not _pending.done():
+        _pending.set_result(text)
 
 
 def generate_reasoning(prompt: str) -> str:
-    """Call Ollama /api/generate; fall back to context-aware stub if unreachable."""
-    try:
-        with httpx.Client(timeout=120.0) as client:
-            resp = client.post(
-                f"{OLLAMA_URL}/api/generate",
-                json={
-                    "model": OLLAMA_MODEL,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {
-                        "temperature": 0.3,
-                        "num_predict": 512,
-                    },
-                },
-            )
-            resp.raise_for_status()
-            return resp.json()["response"].strip()
-    except Exception as exc:
-        logger.warning("Ollama unavailable (%s) — using stub reasoning.", exc)
-        return _stub_response(prompt)
+    """REST call to ASI-1; falls back to Ollama if no API key is set."""
+    if ASI1_API_KEY:
+        resp = requests.post(
+            ASI1_API_URL,
+            headers={
+                "Authorization": f"Bearer {ASI1_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": ASI1_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+            },
+            timeout=60,
+        )
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"].strip()
 
-
-def _stub_response(prompt: str) -> str:
-    """Context-aware stub for when Ollama is not yet running."""
-    p = prompt.lower()
-    if "demand" in p or "spike" in p or "forecast" in p:
-        return (
-            "Historical shipment data shows SKU-4471 (Diamond Foods Holiday Mixed Nuts) "
-            "averaging 510+ units/day over the past 6 days against a 90-day baseline of "
-            "~150 units/day — a 340% lift. The Week 47 seasonal index (2.40) combined with "
-            "the active Thanksgiving promo overlay (+120%) fully accounts for this spike. "
-            "Forecast confidence is high given three corroborating signals."
+    import httpx
+    with httpx.Client(timeout=120.0) as client:
+        resp = client.post(
+            f"{OLLAMA_URL}/api/generate",
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "options": {"temperature": 0.3, "num_predict": 512},
+            },
         )
-    if "vendor" in p or "supplier" in p:
-        return (
-            "Vendor analysis complete. Pacific Grove Supply Co. offers the best risk-adjusted "
-            "lead time with 97% on-time delivery over the past 90 days. Recommend single-sourcing "
-            "the emergency replenishment order given current demand urgency."
-        )
-    if "freight" in p or "shipment" in p or "consolidat" in p or "logistic" in p:
-        return (
-            "Two open purchase orders are routing to the same DC within a 48-hour window. "
-            "Consolidating into a single intermodal shipment reduces freight cost by approximately "
-            "$420 and cuts carrier coordination overhead. Transit increases by 2 days — acceptable "
-            "given the advance notice window."
-        )
-    if "expir" in p or "inventory" in p or "stock" in p:
-        return (
-            "Three lots totaling 840 units are within 48 hours of expiry. Recommend immediate "
-            "markdown or redistribution to a secondary DC to recover value before the FIFO "
-            "priority window closes. SKU-4471 current stock covers less than 3 days at spike rate."
-        )
-    if "market" in p or "signal" in p or "surcharge" in p:
-        return (
-            "Fuel surcharge on the Gulf Coast-Midwest truck lane has risen 18% above the "
-            "30-day average. Switching the two open POs to intermodal locks in current rates "
-            "and avoids further exposure. No adverse weather events detected on primary lanes."
-        )
-    return (
-        "Analysis complete. All supply chain metrics are within acceptable thresholds. "
-        "No critical actions required at this time."
-    )
+        resp.raise_for_status()
+        return resp.json()["response"].strip()

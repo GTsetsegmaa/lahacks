@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from shared.contracts import AgentDecision, DemandForecast
-from agents.common.llm_client import generate_reasoning
+from agents.common.llm_client import generate_reasoning, query_asi1
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "shared" / "mock_data"
 
@@ -87,7 +87,7 @@ def _build_forecasts() -> list[dict]:
     return forecasts
 
 
-def run_demand_planning() -> AgentDecision:
+async def run_demand_planning(ctx=None) -> AgentDecision:
     """Entry point callable from both the uAgent handler and the HTTP trigger."""
     forecasts = _build_forecasts()
 
@@ -118,7 +118,7 @@ def run_demand_planning() -> AgentDecision:
         f"- 7-day forecast total for SKU-4471: {hero_total:.0f} units\n\n"
         "Be precise and concise. Do not include bullet points."
     )
-    reasoning = generate_reasoning(prompt)
+    reasoning = await query_asi1(ctx, prompt) if ctx else generate_reasoning(prompt)
 
     spikes = [f["sku_id"] for f in forecasts if f["spike_detected"]]
 
@@ -140,9 +140,10 @@ def run_demand_planning() -> AgentDecision:
 
 
 if __name__ == "__main__":
+    import asyncio
     import json
 
-    decision = run_demand_planning()
+    decision = asyncio.run(run_demand_planning())
     print(decision.summary)
     print()
     print("reasoning:", decision.reasoning)

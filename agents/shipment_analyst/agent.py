@@ -22,7 +22,10 @@ agent = Agent(
     name="shipment_analyst",
     seed="shipment_analyst_seed_supplymind_2024",
     port=8006,
-    endpoint=["http://localhost:8006/submit"],
+    network="testnet",
+    mailbox=True,
+    publish_agent_details=True,
+    readme_path=str(Path(__file__).resolve().parent / "README.md"),
 )
 
 AGENT_ADDRESS = agent.address
@@ -41,7 +44,7 @@ async def handle_request(
 
     inventory_flags = json.loads(msg.inventory_flags_json)
     market_signals = json.loads(msg.market_signals_json)
-    decision = run_freight_analysis(inventory_flags, market_signals)
+    decision = await run_freight_analysis(inventory_flags, market_signals, ctx)
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
